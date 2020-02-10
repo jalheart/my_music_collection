@@ -79,7 +79,7 @@ app.listen(3000, () => {
 Acto seguido ejecutaremos la instrucción para montar el servidor
 
 ```
-npm src/index.js
+node src/index.js
 ```
 
 Luego desde el navegador podremos acceder a las dos rutas que estan programadas
