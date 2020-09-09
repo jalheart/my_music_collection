@@ -3,18 +3,19 @@ const User = require("./models/User");
 const List = require("./models/List");
 const Song = require("./models/Song");
 const Artist = require("./models/Artist");
+const jwt = require("jsonwebtoken");
+const JWT_KEY = "superllavesecreta";
 
 class Controller {
     constructor() {
         //al crearse el objeto se establece la conexion
         this.connect();
     }
-
     async connect() {
         try {
             //se intenta establecer una conexion con los datos de conexion
             await mongoose.connect(
-                "mongodb+srv://kikret:17DYcr6Zow5TYCSu@cluster0-9ek42.mongodb.net/test?retryWrites=true&w=majority",
+                "mongodb+srv://jalheart:Dyp59xG7UPHt9nVn@cluster0.2rg8t.mongodb.net/mymusic?retryWrites=true&w=majority",
                 //"mongodb://localhost:27017/my_music_collection_db",
                 { useNewUrlParser: true }
             );
@@ -25,10 +26,44 @@ class Controller {
             console.error(e);
         }
     }
+    //Verica la autenticación del usuario a través del token
+    async verifyAuth(req, res, next){
+        console.log(req.header("Authorization"));
+        if(req.header("Authorization")){//Si viene una autorización en el header de la petición.
+            const token = req.header("Authorization").replace("Bearer ", "");            
+            
+            jwt.verify(token, JWT_KEY, (err, data)=>{
+                if(err){
+                    res.status(401).send({message: err});
+                }else {
+                    req.tokenData = data;
+                    next();
+                }
+            });
+        }else{
+            res.status(401).send({message: "Unauthorized"});
+        }
+    }
     //CRUD https://coursework.vschool.io/mongoose-crud/
-    //CRUD https://www.callicoder.com/node-js-express-mongodb-restful-crud-api-tutorial/
+    //CRUD https://www.callicoder.com/node-js-express-mongodb-restful-crud-api-tutorial/    
+    //CRUD user    
+    login(credentials, res){
+        User.findOne({nickname: credentials.nickname}, (err, user)=>{
+            if(err) throw err;
+            if(!user){
+                //https://developer.mozilla.org/es/docs/Web/HTTP/Status/401#:~:text=El%20c%C3%B3digo%20de%20error%20HTTP,autenticaci%C3%B3n%20para%20el%20recurso%20solicitado.
+                return res.status(401).send({message: "Invalid credentials."});
+            }
+            const isPasswordMatch = credentials.password === user.password;
+            if(!isPasswordMatch){
+                return res.status(401).send({message: "Invalid credentials."});
+            }
+            //Generamos el token https://www.npmjs.com/package/jsonwebtoken
+            const token = jwt.sign({_id: user._id}, JWT_KEY, {expiresIn: 300});
+            res.status(200).send({token: token});
+        });
+    }
 
-    //CRUD user
     setUser(user, res) {
         // Se recibe el nuevo usuario en la variable user y se crea a partir del modelo
         User.create(user, function(err, newUser) {
